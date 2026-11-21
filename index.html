@@ -1,0 +1,1718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IdeaTank</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a working index. Tag rail on the left, idea list on the right; the import panel slides open above both.
+   Readability choices (see README): Atkinson Hyperlegible, 18px base, 1.55 line height, <=70ch measure,
+   warm off-white ground (not pure white), warm near-black text (not pure black), all text pairs >= 7:1. */
+:root {
+  --bg: #F8F5EE;          /* warm off-white: lower glare than #FFF */
+  --surface: #FFFDF8;
+  --sunk: #F1ECE1;
+  --fg: #1F1D1A;          /* 15.4:1 on bg */
+  --muted: #4D4840;       /* 8.3:1 on bg */
+  --line: #DDD5C5;
+  --line-strong: #8A8172; /* 3.5:1, for input borders (WCAG 1.4.11) */
+  --accent: #1A4F9E;      /* 7.3:1 on bg */
+  --on-accent: #FFFFFF;
+  --accent-soft: #E3EAF6;
+  --chip: #ECE6D9;
+  --mark: #FFE380;
+  --danger: #8C2A1E;
+  --ok: #24603A;
+  --shadow: 0 1px 2px rgb(60 50 30 / .08), 0 8px 24px rgb(60 50 30 / .10);
+
+  --font: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Verdana", system-ui, sans-serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, "Consolas", monospace;
+  --fs: 1.125rem;         /* 18px base */
+  --lh: 1.55;
+  --radius: 8px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1A1917; --surface: #23211E; --sunk: #141311;
+    --fg: #ECE8E1; --muted: #B3ADA3; --line: #3A3631; --line-strong: #7D766C;
+    --accent: #9CBEF5; --on-accent: #10223F; --accent-soft: #24324A;
+    --chip: #2E2B27; --mark: #5A4A12; --danger: #F2A497; --ok: #9AD3A8;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1A1917; --surface: #23211E; --sunk: #141311;
+  --fg: #ECE8E1; --muted: #B3ADA3; --line: #3A3631; --line-strong: #7D766C;
+  --accent: #9CBEF5; --on-accent: #10223F; --accent-soft: #24324A;
+  --chip: #2E2B27; --mark: #5A4A12; --danger: #F2A497; --ok: #9AD3A8;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35);
+  color-scheme: dark;
+}
+:root[data-size="large"] { --fs: 1.25rem; }
+:root[data-size="larger"] { --fs: 1.4rem; }
+:root[data-spacing="wide"] { --lh: 1.8; }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { font-size: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--fs);
+  line-height: var(--lh);
+  font-variant-ligatures: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 4rem;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; line-height: 1.3; }
+h1, h2, h3 { line-height: 1.25; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: .18em; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.app { max-width: 1240px; margin: 0 auto; }
+
+/* ---------- Header ---------- */
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem;
+  padding-block: 1.25rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap; margin-right: auto; }
+.brand h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -.01em; }
+.brand .count { color: var(--muted); font-family: var(--mono); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.top-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* ---------- Buttons & fields ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-height: 44px; padding: .45rem 1rem;
+  border: 2px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--fg);
+  font-weight: 700; font-size: 1rem; cursor: pointer; text-decoration: none;
+}
+.btn:hover { border-color: var(--fg); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--accent); padding-inline: .6rem; }
+.btn.quiet:hover { background: var(--accent-soft); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.small { min-height: 36px; padding: .25rem .7rem; font-size: .95rem; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.field { display: grid; gap: .3rem; }
+.field > span, .label { font-weight: 700; font-size: 1rem; }
+.hint { color: var(--muted); font-size: 1rem; }
+input[type="text"], input[type="search"], select, textarea {
+  width: 100%; min-height: 44px;
+  padding: .5rem .75rem;
+  border: 2px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--fg);
+}
+textarea { line-height: var(--lh); resize: vertical; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+input[type="checkbox"], input[type="radio"] { width: 1.25rem; height: 1.25rem; accent-color: var(--accent); margin: 0; flex: none; }
+.check { display: inline-flex; gap: .55rem; align-items: center; min-height: 44px; cursor: pointer; }
+
+/* ---------- Disclosure menus ---------- */
+.menu { position: relative; }
+.menu > summary { list-style: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu-panel {
+  position: absolute; right: 0; top: calc(100% + .4rem); z-index: 30;
+  width: min(22rem, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 1rem; display: grid; gap: .9rem;
+}
+.seg { display: flex; flex-wrap: wrap; gap: .35rem; }
+.seg label { flex: 1 1 auto; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span {
+  display: flex; align-items: center; justify-content: center; min-height: 40px; padding: .25rem .7rem;
+  border: 2px solid var(--line-strong); border-radius: var(--radius); cursor: pointer; font-size: 1rem;
+}
+.seg input:checked + span { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+.seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Banner ---------- */
+.banner {
+  display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center;
+  margin-top: 1rem; padding: .75rem 1rem;
+  background: var(--accent-soft); border-radius: var(--radius);
+}
+.banner p { flex: 1 1 20rem; }
+
+/* ---------- Import panel ---------- */
+.importer {
+  margin-top: 1.25rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.importer-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+.importer-head h2 { font-size: 1.375rem; margin-right: auto; }
+.tabs { display: flex; gap: .25rem; }
+.tab { min-height: 44px; padding: .4rem 1rem; border: 0; border-bottom: 3px solid transparent; background: none; font-weight: 700; cursor: pointer; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.importer-body { padding: 1.25rem; display: grid; gap: 1rem; }
+#pasteBox { min-height: 12rem; font-size: 1rem; }
+.drop {
+  display: grid; place-items: center; gap: .5rem; text-align: center;
+  min-height: 12rem; padding: 1.5rem;
+  border: 2px dashed var(--line-strong); border-radius: var(--radius); background: var(--sunk);
+  cursor: pointer;
+}
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop strong { font-size: 1.2rem; }
+.row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.row.end { justify-content: flex-end; }
+.status { color: var(--muted); font-size: 1rem; }
+.status.error { color: var(--danger); font-weight: 700; }
+
+/* preview */
+.preview { border-top: 1px solid var(--line); padding: 1.25rem; display: grid; gap: 1rem; }
+.preview h3 { font-size: 1.2rem; }
+.preview-controls { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); align-items: end; }
+.mapping { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); }
+.mapping .field > span { font-weight: 400; overflow-wrap: anywhere; }
+.cand-list { display: grid; gap: 0; max-height: 34rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.cand { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); }
+.cand:last-child { border-bottom: 0; }
+.cand > input { margin-top: .7rem; }
+.cand.off { opacity: .6; }
+.cand-title { font-weight: 700; }
+.cand-desc { color: var(--muted); font-size: 1rem; white-space: pre-line; max-width: 70ch; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cand-meta { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; font-size: .95rem; }
+.badge { display: inline-flex; align-items: center; min-height: 28px; padding: 0 .55rem; border-radius: 999px; border: 1.5px solid var(--line-strong); font-size: .9rem; font-weight: 700; }
+.badge.warn { border-color: var(--danger); color: var(--danger); }
+
+/* ---------- Main layout ---------- */
+.layout { display: grid; gap: 1.5rem; margin-top: 1.5rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .layout { grid-template-columns: 17rem minmax(0, 1fr); } }
+
+.rail { align-self: start; }
+@media (min-width: 900px) { .rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); max-height: calc(100vh - 2rem); overflow: auto; } }
+.rail > details > summary { cursor: pointer; font-weight: 700; font-size: 1.2rem; min-height: 44px; display: flex; align-items: center; gap: .5rem; }
+.rail-inner { display: grid; gap: .75rem; padding-top: .5rem; }
+.taglist { list-style: none; margin: 0; padding: 0; display: grid; gap: .15rem; }
+.taglist li { display: flex; align-items: center; gap: .25rem; }
+.tagfilter {
+  flex: 1; display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+  min-height: 40px; padding: .25rem .6rem; border-radius: var(--radius);
+  border: 2px solid transparent; background: none; cursor: pointer; text-align: left; min-width: 0;
+}
+.tagfilter:hover { background: var(--chip); }
+.tagfilter[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.tagfilter .n { font-family: var(--mono); font-size: .95rem; font-variant-numeric: tabular-nums; }
+.tagfilter .nm { overflow-wrap: anywhere; }
+.tagfilter[aria-pressed="true"]::before { content: "✓"; margin-right: -.2rem; }
+.icon-btn { min-width: 36px; min-height: 36px; border: 0; background: none; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 1rem; }
+.icon-btn:hover { background: var(--chip); color: var(--fg); }
+.rail .hint { font-size: .95rem; }
+
+/* toolbar */
+.toolbar { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .toolbar { grid-template-columns: minmax(0, 1fr) 13rem; } }
+.toolbar .opts { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; align-items: center; grid-column: 1 / -1; }
+.active-filters { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; grid-column: 1 / -1; }
+.active-filters:empty { display: none; }
+
+.bulk {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+  margin-top: .75rem; padding: .6rem .8rem;
+  background: var(--fg); color: var(--bg); border-radius: var(--radius);
+}
+.bulk .btn { background: var(--bg); color: var(--fg); border-color: var(--bg); }
+.bulk input[type="text"] { width: 12rem; min-height: 36px; padding: .2rem .6rem; background: var(--bg); color: var(--fg); border-color: var(--bg); }
+.bulk .n { font-weight: 700; margin-right: .5rem; }
+
+/* idea list */
+.list-head { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; padding: .25rem 0; color: var(--muted); font-size: 1rem; }
+.ideas { margin-top: .25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.group-title { padding: .75rem 1.25rem .5rem; font-size: 1.15rem; background: var(--sunk); border-bottom: 1px solid var(--line); display: flex; gap: .6rem; align-items: baseline; }
+.group-title .n { font-family: var(--mono); font-size: .95rem; color: var(--muted); font-weight: 400; }
+.idea { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .25rem 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+.idea:last-child { border-bottom: 0; }
+.idea.sel { background: var(--accent-soft); }
+.idea > input { margin-top: .3rem; }
+.idea > .edit { align-self: start; }
+.idea-body { display: grid; gap: .45rem; min-width: 0; }
+.idea-title { font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
+.idea-desc { max-width: 70ch; white-space: pre-line; overflow-wrap: anywhere; }
+.idea-desc.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.more { justify-self: start; border: 0; background: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: .2rem 0; min-height: 32px; text-decoration: underline; text-underline-offset: .18em; }
+.attrs { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin: 0; font-size: 1rem; }
+.attrs div { display: flex; gap: .35rem; }
+.attrs dt { color: var(--muted); }
+.attrs dt::after { content: ":"; }
+.attrs dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: .95rem; }
+mark { background: var(--mark); color: var(--fg); border-radius: 3px; padding: 0 .1em; }
+
+.tags { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.tag { display: inline-flex; align-items: stretch; border-radius: 999px; background: var(--chip); border: 1.5px solid var(--line); font-size: 1rem; overflow: hidden; }
+.tag .t { border: 0; background: none; padding: .15rem .3rem .15rem .75rem; min-height: 32px; cursor: pointer; }
+.tag .t::before { content: "#"; color: var(--muted); }
+.tag .x { border: 0; background: none; min-width: 32px; cursor: pointer; color: var(--muted); font-size: 1.05rem; }
+.tag .x:hover, .tag .t:hover { background: var(--line); color: var(--fg); }
+.tag.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tag.on .t::before, .tag.on .x { color: var(--on-accent); }
+.tag.solo .t { padding-right: .75rem; }
+.add-tag { border: 1.5px dashed var(--line-strong); border-radius: 999px; background: none; min-height: 32px; padding: .1rem .75rem; cursor: pointer; color: var(--accent); font-weight: 700; font-size: 1rem; }
+.add-tag:hover { background: var(--accent-soft); }
+.tag-input { width: 12rem !important; min-height: 34px !important; padding: .1rem .7rem !important; border-radius: 999px !important; font-size: 1rem; }
+
+.empty { padding: 2.5rem 1.25rem; text-align: center; display: grid; gap: .75rem; justify-items: center; }
+.empty h3 { font-size: 1.3rem; }
+.empty p { color: var(--muted); max-width: 48ch; }
+.show-more { display: flex; justify-content: center; padding: 1rem; border-top: 1px solid var(--line); }
+
+/* dialog */
+dialog {
+  width: min(42rem, calc(100vw - 32px)); max-height: calc(100vh - 32px);
+  border: 1px solid var(--line); border-radius: 12px; padding: 0;
+  background: var(--surface); color: var(--fg); box-shadow: var(--shadow);
+}
+dialog::backdrop { background: rgb(20 18 15 / .55); }
+.dlg { display: grid; gap: 1rem; padding: 1.25rem 1.5rem 1.5rem; }
+.dlg h2 { font-size: 1.4rem; }
+.attr-rows { display: grid; gap: .5rem; }
+.attr-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto; gap: .5rem; }
+.dlg-foot { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; align-items: center; padding-top: .5rem; border-top: 1px solid var(--line); }
+.dlg-foot .right { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* toast */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); z-index: 50; display: grid; gap: .5rem; width: min(32rem, calc(100vw - 32px)); }
+.toast { display: flex; align-items: center; gap: 1rem; justify-content: space-between; padding: .7rem 1rem; background: var(--fg); color: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); }
+.toast button { background: none; border: 2px solid var(--bg); color: var(--bg); border-radius: 6px; min-height: 36px; padding: 0 .75rem; font-weight: 700; cursor: pointer; }
+
+footer.about { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 1rem; max-width: 75ch; }
+footer.about summary { cursor: pointer; font-weight: 700; color: var(--fg); min-height: 44px; display: flex; align-items: center; }
+footer.about ul { padding-left: 1.2rem; display: grid; gap: .4rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .tagfilter, .tag, .idea { transition: background-color .15s, border-color .15s; }
+}
+@media (max-width: 520px) {
+  .idea { grid-template-columns: auto minmax(0, 1fr); }
+  .idea > .edit { grid-column: 2; justify-self: start; }
+  .attr-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .attr-row input:nth-child(2) { grid-column: 1; grid-row: 2; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <h1>IdeaTank</h1>
+      <span class="count" id="countLabel">0 ideas</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn primary" id="toggleImport" aria-expanded="false" aria-controls="importer">Add ideas from text or file</button>
+      <button class="btn" id="newIdea">New idea</button>
+      <details class="menu" id="dataMenu">
+        <summary class="btn">Backup</summary>
+        <div class="menu-panel">
+          <p class="hint">Ideas are saved in this browser only. Back them up to move them to another device.</p>
+          <div class="row">
+            <button class="btn small" id="exportCsv">Download CSV</button>
+            <button class="btn small" id="exportJson">Download backup</button>
+            <button class="btn small" id="copyJson">Copy backup text</button>
+          </div>
+          <p class="hint">To restore, add a backup file (or paste its text) with “Add ideas”.</p>
+          <div class="row">
+            <button class="btn small danger" id="wipe">Delete all ideas</button>
+          </div>
+        </div>
+      </details>
+      <details class="menu" id="displayMenu">
+        <summary class="btn">Display</summary>
+        <div class="menu-panel">
+          <div class="field"><span class="label" id="lblSize">Text size</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblSize">
+              <label><input type="radio" name="size" id="size-normal" value="normal"><span>Standard</span></label>
+              <label><input type="radio" name="size" id="size-large" value="large"><span>Large</span></label>
+              <label><input type="radio" name="size" id="size-larger" value="larger"><span>Larger</span></label>
+            </div>
+          </div>
+          <div class="field"><span class="label" id="lblSpacing">Line spacing</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblSpacing">
+              <label><input type="radio" name="spacing" id="sp-normal" value="normal"><span>Standard</span></label>
+              <label><input type="radio" name="spacing" id="sp-wide" value="wide"><span>Wide</span></label>
+            </div>
+          </div>
+          <div class="field"><span class="label" id="lblTheme">Colors</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblTheme">
+              <label><input type="radio" name="theme" id="th-system" value="system"><span>Match device</span></label>
+              <label><input type="radio" name="theme" id="th-light" value="light"><span>Light</span></label>
+              <label><input type="radio" name="theme" id="th-dark" value="dark"><span>Dark</span></label>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div class="banner" id="storageWarn" hidden>
+    <p><strong>This browser isn't saving your ideas.</strong> It may be in private mode or blocking site storage. Use Backup before you close the page.</p>
+  </div>
+  <div class="banner" id="sampleBanner" hidden>
+    <p>These six ideas tagged <strong>#example</strong> show how the index works. Add your own, then remove them.</p>
+    <button class="btn small" id="removeSamples">Remove examples</button>
+  </div>
+
+  <!-- ===== Import ===== -->
+  <section class="importer" id="importer" hidden aria-labelledby="importTitle">
+    <div class="importer-head">
+      <h2 id="importTitle">Add ideas</h2>
+      <div class="tabs" role="tablist" aria-label="How to add ideas">
+        <button class="tab" role="tab" id="tab-paste" aria-selected="true" aria-controls="pane-paste">Paste text</button>
+        <button class="tab" role="tab" id="tab-file" aria-selected="false" aria-controls="pane-file">Upload a file</button>
+      </div>
+      <button class="btn quiet" id="closeImport">Close</button>
+    </div>
+
+    <div class="importer-body" id="pane-paste" role="tabpanel" aria-labelledby="tab-paste">
+      <label class="field" for="pasteBox">
+        <span>Paste a list, notes, a document or spreadsheet cells</span>
+        <textarea id="pasteBox" placeholder="- Neighborhood tool library: borrow drills and ladders instead of buying them&#10;- Meeting cost ticker #workplace&#10;&#10;Or paste rows copied from a spreadsheet."></textarea>
+      </label>
+      <div class="row">
+        <button class="btn primary" id="extractPaste">Find ideas</button>
+        <button class="btn quiet" id="trySample">Try with sample notes</button>
+        <span class="status" id="pasteStatus" role="status"></span>
+      </div>
+    </div>
+
+    <div class="importer-body" id="pane-file" role="tabpanel" aria-labelledby="tab-file" hidden>
+      <label class="drop" id="drop" for="fileInput">
+        <strong>Drop files here or choose files</strong>
+        <span class="hint">Word (.docx), PDF, CSV, Excel (.xlsx), text, Markdown, RTF, HTML, or an IdeaTank backup</span>
+        <span class="btn small" aria-hidden="true">Choose files</span>
+      </label>
+      <input type="file" id="fileInput" class="sr-only" multiple accept=".docx,.pdf,.csv,.tsv,.xlsx,.xls,.ods,.txt,.md,.markdown,.rtf,.html,.htm,.json,text/*">
+      <span class="status" id="fileStatus" role="status"></span>
+    </div>
+
+    <div class="preview" id="preview" hidden></div>
+  </section>
+
+  <!-- ===== Index ===== -->
+  <div class="layout">
+    <aside class="rail" aria-label="Tags">
+      <details id="tagDetails" open>
+        <summary>Tags <span class="meta" id="tagCount"></span></summary>
+        <div class="rail-inner">
+          <div class="field">
+            <span class="label" id="lblMatch">Show ideas with</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblMatch">
+              <label><input type="radio" name="match" id="match-any" value="any" checked><span>Any selected tag</span></label>
+              <label><input type="radio" name="match" id="match-all" value="all"><span>All selected</span></label>
+            </div>
+          </div>
+          <div class="row" style="justify-content: space-between;">
+            <label class="field" for="tagSort" style="flex:1"><span class="sr-only">Order tags by</span>
+              <select id="tagSort">
+                <option value="count">Most used first</option>
+                <option value="name">A to Z</option>
+              </select>
+            </label>
+            <button class="btn small quiet" id="manageTags" aria-pressed="false">Edit tags</button>
+          </div>
+          <ul class="taglist" id="tagList"></ul>
+          <p class="hint" id="tagHint">Select a tag to filter. Select more than one to combine them.</p>
+        </div>
+      </details>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <label class="field" for="search">
+          <span>Search ideas</span>
+          <input type="search" id="search" placeholder="Words, phrases in quotes, or tag:name" autocomplete="off">
+        </label>
+        <label class="field" for="sort">
+          <span>Sort by</span>
+          <select id="sort">
+            <option value="new">Newest added</option>
+            <option value="old">Oldest added</option>
+            <option value="edited">Recently edited</option>
+            <option value="az">Title A to Z</option>
+            <option value="za">Title Z to A</option>
+            <option value="tag">Tag A to Z</option>
+            <option value="ntags">Most tags</option>
+            <option value="untagged">Untagged first</option>
+          </select>
+        </label>
+        <div class="opts">
+          <label class="check"><input type="checkbox" id="groupByTag"> Group by tag</label>
+          <label class="check"><input type="checkbox" id="showFull"> Show full descriptions</label>
+        </div>
+        <div class="active-filters" id="activeFilters"></div>
+      </div>
+
+      <div class="bulk" id="bulk" hidden>
+        <span class="n" id="bulkCount">0 selected</span>
+        <label for="bulkTag" class="sr-only">Tag for selected ideas</label>
+        <input type="text" id="bulkTag" list="tagOptions" placeholder="Tag name">
+        <button class="btn small" id="bulkAdd">Add tag</button>
+        <button class="btn small" id="bulkRemove">Remove tag</button>
+        <button class="btn small" id="bulkDelete">Delete</button>
+        <button class="btn small" id="bulkClear">Clear selection</button>
+      </div>
+
+      <div class="list-head">
+        <input type="checkbox" id="selectAll" aria-label="Select all shown ideas">
+        <span id="resultLabel" aria-live="polite"></span>
+      </div>
+      <div class="ideas" id="ideas"></div>
+    </main>
+  </div>
+
+  <footer class="about">
+    <details>
+      <summary>Why the page looks this way</summary>
+      <ul>
+        <li>The typeface is Atkinson Hyperlegible, designed by the Braille Institute so that easily confused characters (I, l, 1 and O, 0) look clearly different.</li>
+        <li>Body text starts at 18px with 1.55 line spacing and lines no wider than about 70 characters, in line with WCAG 2.2 guidance on visual presentation and text spacing.</li>
+        <li>Text is dark gray on a warm off-white instead of pure black on pure white, which reduces glare. Every text color meets the 7:1 enhanced contrast level in both light and dark colors.</li>
+        <li>Tags never rely on color alone: selected tags also show a check mark and a filled shape. Buttons are at least 36 to 44 pixels tall so they are easy to hit.</li>
+        <li>Use Display to make text larger, add line spacing, or switch colors.</li>
+      </ul>
+    </details>
+  </footer>
+</div>
+
+<datalist id="tagOptions"></datalist>
+
+<dialog id="editDlg" aria-labelledby="editTitle">
+  <form class="dlg" id="editForm" method="dialog">
+    <h2 id="editTitle">Edit idea</h2>
+    <label class="field" for="fTitle"><span>Title</span><input type="text" id="fTitle" required></label>
+    <label class="field" for="fDesc"><span>Description</span><textarea id="fDesc" rows="5"></textarea></label>
+    <label class="field" for="fTags"><span>Tags</span>
+      <input type="text" id="fTags" placeholder="kitchen, hardware, someday">
+      <span class="hint">Separate tags with commas.</span>
+    </label>
+    <div class="field">
+      <span class="label">Attributes</span>
+      <span class="hint">Details like cost, effort, owner or status.</span>
+      <div class="attr-rows" id="attrRows"></div>
+      <div><button type="button" class="btn small" id="addAttr">Add attribute</button></div>
+    </div>
+    <p class="meta" id="fMeta"></p>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="fDelete">Delete idea</button>
+      <div class="right">
+        <button type="button" class="btn" id="fCancel">Cancel</button>
+        <button type="submit" class="btn primary" id="fSave">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Utilities ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const normTag = t => String(t || '').trim().replace(/^#+/, '').replace(/\s+/g, ' ').toLowerCase().slice(0, 60);
+const normTitle = t => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
+const splitTags = s => String(s || '').split(/[,;|]/).map(normTag).filter(Boolean);
+const uniq = a => [...new Set(a)];
+
+const scriptCache = {};
+function loadScript(src) {
+  if (!scriptCache[src]) scriptCache[src] = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load a file reader. Check your connection and try again.'));
+    document.head.appendChild(s);
+  });
+  return scriptCache[src];
+}
+const LIB = {
+  mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
+  pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+};
+
+/* ================= Storage ================= */
+const KEY = 'ideatank.v1', PKEY = 'ideatank.prefs';
+let db = { ideas: [] };
+let storageOK = true;
+function loadDb() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.ideas)) { db = d; return true; } }
+  } catch (e) { storageOK = false; }
+  return false;
+}
+function saveDb() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOK = true; }
+  catch (e) { storageOK = false; }
+  $('#storageWarn').hidden = storageOK;
+}
+let prefs = { size: 'normal', spacing: 'normal', theme: 'system', sort: 'new', group: false, full: false, tagSort: 'count', match: 'any' };
+function loadPrefs() { try { Object.assign(prefs, JSON.parse(localStorage.getItem(PKEY) || '{}')); } catch (e) {} }
+function savePrefs() { try { localStorage.setItem(PKEY, JSON.stringify(prefs)); } catch (e) {} }
+
+function applyDisplay() {
+  const r = document.documentElement;
+  if (prefs.theme === 'system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', prefs.theme);
+  r.setAttribute('data-size', prefs.size);
+  r.setAttribute('data-spacing', prefs.spacing);
+  const pick = (name, v) => { const el = $(`input[name="${name}"][value="${v}"]`); if (el) el.checked = true; };
+  pick('size', prefs.size); pick('spacing', prefs.spacing); pick('theme', prefs.theme); pick('match', prefs.match);
+}
+
+/* ================= Text extraction ================= */
+const BULLET = /^(\s*)(?:[-*+•‣◦▪▫●○■□➢➤►▶✓✔→]|\(?\d{1,3}[.)]|\(?[a-zA-Z][.)]|[ivxIVX]{1,4}[.)])\s+(?:\[[ xX]\]\s+)?(.*)$/;
+const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const TAGLINE = /^(?:tags?|labels?|keywords?|categor(?:y|ies)|themes?)\s*[:=]\s*(.+)$/i;
+const KV = /^([\p{L}][\p{L}\p{N} /&'’()-]{0,28}?)\s*[:=]\s+(.{1,300})$/u;
+const ATTR_KEYS = /^(effort|cost|costs|owner|status|priority|impact|value|stage|date|due|author|source|category|type|difficulty|budget|timeline|time|score|rating|link|url|contact|tags?|labels?|notes?|risk|size|audience|market|revenue|price|who|when|where)$/i;
+const HASHTAG = /(^|[\s(])#([\p{L}\p{N}][\p{L}\p{N}_-]{1,40})\b/gu;
+
+const indentOf = l => l.match(/^\s*/)[0].length;
+function cleanInline(s) {
+  return String(s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^\*\*(.+)\*\*$/, '$1').replace(/^__(.+)__$/, '$1');
+}
+function looksLikeHeading(t, nextLine) {
+  if (t.length > 70 || /[.!?,;]$/.test(t) || BULLET.test(t)) return false;
+  if (/:$/.test(t)) return true;
+  if (t === t.toUpperCase() && /\p{L}/u.test(t) && t.length > 2) return true;
+  return !!(nextLine && BULLET.test(nextLine));
+}
+
+function newCand(text, section) { return { head: text, lines: [], section: section || '' }; }
+
+/* Turn a raw candidate into {title, description, tags, attrs} */
+function finalizeCand(c) {
+  let head = String(c.head || '').replace(/ /g, ' ').trim();
+  const tags = new Set();
+  const attrs = {};
+  const desc = [];
+  const takeHashtags = s => s.replace(HASHTAG, (m, pre, t) => { tags.add(normTag(t)); return pre; }).replace(/\s{2,}/g, ' ').trim();
+
+  head = takeHashtags(head);
+  let title = '', d0 = '';
+  const bold = head.match(/^\*\*(.+?)\*\*\s*[:.\-–—]?\s*(.*)$/) || head.match(/^__(.+?)__\s*[:.\-–—]?\s*(.*)$/);
+  if (bold) { title = bold[1]; d0 = bold[2]; }
+  else {
+    const m = head.match(/^(.{2,90}?)\s+[-–—]{1,2}\s+(.{3,})$/) || head.match(/^([^:]{2,90}?):\s+(.{3,})$/);
+    if (m && !/^(https?|www)/i.test(m[1])) { title = m[1]; d0 = m[2]; } else title = head;
+  }
+  title = cleanInline(title.replace(/\*\*|__/g, ''));
+  if (d0) { d0 = d0.replace(/\*\*|__/g, '').trim(); desc.push(d0.charAt(0).toUpperCase() + d0.slice(1)); }
+
+  for (let raw of c.lines) {
+    let l = String(raw).replace(/ /g, ' ').trim();
+    const b = l.match(BULLET); if (b) l = b[2].trim();
+    l = l.replace(/\*\*|__/g, '');
+    if (!l) continue;
+    const tl = l.match(TAGLINE);
+    if (tl) { splitTags(tl[1]).forEach(t => tags.add(t)); continue; }
+    const before = l; l = takeHashtags(l);
+    if (!l) continue;
+    const kv = l.match(KV);
+    if (kv && kv[1].split(/\s+/).length <= 3 && !/^(https?|www)$/i.test(kv[1]) && before === l) {
+      const k = kv[1].trim(); const key = k[0].toUpperCase() + k.slice(1);
+      attrs[key] = attrs[key] ? attrs[key] + '; ' + kv[2].trim() : kv[2].trim();
+      continue;
+    }
+    desc.push(l);
+  }
+  let description = desc.join('\n').trim();
+  if (!title && description) { title = description; description = ''; }
+  if (title.length > 120) {
+    const s = title.match(/^(.{20,110}?[.!?])\s/);
+    const short = s ? s[1] : title.slice(0, 100).replace(/\s+\S*$/, '') + '…';
+    description = (title + (description ? '\n' + description : '')).trim();
+    title = short;
+  }
+  if (c.section) attrs.Section = attrs.Section || c.section;
+  return { title, description, tags: [...tags].filter(Boolean), attrs };
+}
+
+function textStats(lines) {
+  const nonEmpty = lines.filter(l => l.trim());
+  const bullets = nonEmpty.filter(l => BULLET.test(l)).length;
+  const headings = nonEmpty.filter(l => HEADING.test(l)).length;
+  let blocks = 0, inBlock = false;
+  for (const l of lines) { if (l.trim()) { if (!inBlock) blocks++; inBlock = true; } else inBlock = false; }
+  return { nonEmpty: nonEmpty.length, bullets, headings, blocks };
+}
+function autoMode(lines) {
+  const s = textStats(lines);
+  if (s.bullets >= 2 && s.bullets >= s.nonEmpty * 0.25) return 'list';
+  if (s.headings >= 2) return 'heading';
+  if (s.blocks >= 2 && s.blocks < s.nonEmpty) return 'block';
+  return 'line';
+}
+function toLines(text) { return String(text).replace(/\r\n?/g, '\n').replace(/\t/g, '    ').replace(/ /g, ' ').split('\n'); }
+
+function parseText(text, mode) {
+  const lines = toLines(text);
+  const used = mode === 'auto' ? autoMode(lines) : mode;
+  let cands = [], skipped = 0, section = '';
+
+  if (used === 'list') {
+    const bulletIndents = lines.filter(l => BULLET.test(l)).map(indentOf);
+    const base = bulletIndents.length ? Math.min(...bulletIndents) : 0;
+    let cur = null, prevBlank = true;
+    lines.forEach((line, i) => {
+      if (!line.trim()) { prevBlank = true; return; }
+      const ind = indentOf(line), t = line.trim();
+      const h = line.match(HEADING);
+      if (h) { section = cleanInline(h[2]); cur = null; prevBlank = false; return; }
+      const b = line.match(BULLET);
+      if (b) {
+        const kv = b[2].match(KV);
+        if (cur && ind <= base + 1 && kv && ATTR_KEYS.test(kv[1].trim())) cur.lines.push(b[2]);
+        else if (ind <= base + 1 || !cur) { cur = newCand(b[2], section); cands.push(cur); }
+        else cur.lines.push(t);
+      } else if (cur && (ind > base || !prevBlank)) {
+        cur.lines.push(t);
+      } else {
+        const next = lines.slice(i + 1).find(l => l.trim());
+        if (looksLikeHeading(t, next)) section = cleanInline(t.replace(/:$/, ''));
+        else skipped++;
+        cur = null;
+      }
+      prevBlank = false;
+    });
+  } else if (used === 'heading') {
+    const counts = {};
+    lines.forEach(l => { const h = l.match(HEADING); if (h) counts[h[1].length] = (counts[h[1].length] || 0) + 1; });
+    const levels = Object.keys(counts).map(Number);
+    const repeated = levels.filter(n => counts[n] >= 2);
+    const ideaLevel = repeated.length ? Math.max(...repeated) : Math.max(...levels);
+    let cur = null;
+    for (const line of lines) {
+      const h = line.match(HEADING);
+      if (h) {
+        const lvl = h[1].length;
+        if (lvl === ideaLevel) { cur = newCand(h[2], section); cands.push(cur); }
+        else if (lvl < ideaLevel) { section = cleanInline(h[2]); cur = null; }
+        else if (cur) cur.lines.push(h[2]);
+        continue;
+      }
+      if (!line.trim()) continue;
+      if (cur) cur.lines.push(line.trim()); else skipped++;
+    }
+  } else if (used === 'block') {
+    let block = [];
+    const flush = () => {
+      if (!block.length) return;
+      const first = block[0];
+      const h = first.match(HEADING);
+      if (block.length === 1 && (h || looksLikeHeading(first.trim(), null) && first.trim().endsWith(':'))) {
+        section = cleanInline((h ? h[2] : first).replace(/:$/, ''));
+      } else {
+        const b = first.match(BULLET);
+        const c = newCand(h ? h[2] : b ? b[2] : first.trim(), section);
+        c.lines = block.slice(1).map(l => l.trim());
+        cands.push(c);
+      }
+      block = [];
+    };
+    for (const l of lines) { if (l.trim()) block.push(l); else flush(); }
+    flush();
+  } else { // line
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const h = line.match(HEADING);
+      if (h) { section = cleanInline(h[2]); continue; }
+      const b = line.match(BULLET);
+      cands.push(newCand(b ? b[2] : line.trim(), section));
+    }
+  }
+  const items = cands.map(finalizeCand).filter(c => c.title && c.title.length > 1);
+  return { items, used, skipped };
+}
+
+/* ================= Tables (CSV, spreadsheets, Word tables) ================= */
+function parseDelimited(text, delim) {
+  text = String(text).replace(/^﻿/, '');
+  if (!delim) {
+    const first = text.split(/\r?\n/).slice(0, 5).join('\n');
+    const count = ch => (first.match(new RegExp(ch === '\t' ? '\\t' : '\\' + ch, 'g')) || []).length;
+    delim = [',', '\t', ';', '|'].sort((a, b) => count(b) - count(a))[0];
+  }
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"' && cell === '') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function looksTabular(text) {
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return false;
+  const tabbed = lines.filter(l => l.includes('\t')).length;
+  if (tabbed >= lines.length * 0.8) return true;
+  if (lines.some(l => BULLET.test(l) || HEADING.test(l))) return false;
+  const rows = parseDelimited(text);
+  const widths = rows.filter(r => r.some(c => c.trim())).map(r => r.length);
+  if (!widths.length) return false;
+  const w = widths[0];
+  return w >= 2 && widths.filter(x => x === w).length >= widths.length * 0.9 && lines.every(l => l.length < 1500);
+}
+
+const RE_TITLE = /^(ideas?|titles?|names?|concepts?|headlines?|subjects?|items?|products?|features?|projects?|what)$/i;
+const RE_TITLE_SOFT = /(idea|title|name|concept|headline)/i;
+const RE_DESC = /(desc|detail|notes?|body|text|explan|summary|pitch|content|comment|why|how|elaborat|about)/i;
+const RE_TAGS = /^(tags?|labels?|keywords?|categor(y|ies)|themes?|topics?|types?|groups?|areas?)$/i;
+const RE_IGNORE = /^(id|#|no\.?|num(ber)?|row|index|uuid|key)$/i;
+const isNum = s => /^\s*[-+$€£]?\d[\d,.\s%]*\s*$/.test(s);
+
+function analyzeTable(rawRows) {
+  let rows = rawRows.map(r => r.map(c => String(c ?? '').replace(/ /g, ' ').trim())).filter(r => r.some(Boolean));
+  if (!rows.length) return null;
+  const width = Math.max(...rows.map(r => r.length));
+  rows = rows.map(r => { while (r.length < width) r.push(''); return r; });
+  const first = rows[0];
+  const knownHeader = first.some(h => RE_TITLE.test(h) || RE_TITLE_SOFT.test(h) || RE_DESC.test(h) || RE_TAGS.test(h));
+  const plain = first.every(Boolean) && !first.some(isNum) && new Set(first.map(s => s.toLowerCase())).size === first.length
+    && first.reduce((a, s) => a + s.length, 0) / width < 30;
+  const hasHeader = rows.length > 1 && (knownHeader || plain);
+  const headers = (hasHeader ? first : first.map(() => '')).map((h, i) => h || `Column ${i + 1}`);
+  const data = hasHeader ? rows.slice(1) : rows;
+  return { headers, data, roles: guessRoles(headers, data, hasHeader), hasHeader };
+}
+function guessRoles(headers, data, hasHeader) {
+  const n = headers.length;
+  const roles = Array(n).fill('attr');
+  const stats = headers.map((h, i) => {
+    const vals = data.map(r => r[i]).filter(Boolean);
+    const avg = vals.length ? vals.reduce((a, v) => a + v.length, 0) / vals.length : 0;
+    const nums = vals.filter(isNum).length;
+    const distinct = new Set(vals).size;
+    return { avg, fill: vals.length / Math.max(1, data.length), numeric: vals.length && nums / vals.length > 0.8, distinct, count: vals.length };
+  });
+  headers.forEach((h, i) => {
+    if (stats[i].count === 0 || (hasHeader && RE_IGNORE.test(h))) roles[i] = 'ignore';
+    else if (hasHeader && RE_TAGS.test(h)) roles[i] = 'tags';
+  });
+  let t = hasHeader ? headers.findIndex((h, i) => roles[i] === 'attr' && RE_TITLE.test(h)) : -1;
+  if (t < 0 && hasHeader) t = headers.findIndex((h, i) => roles[i] === 'attr' && RE_TITLE_SOFT.test(h) && !RE_DESC.test(h));
+  if (t < 0) {
+    let best = -1, score = -1;
+    stats.forEach((s, i) => {
+      if (roles[i] !== 'attr' || s.numeric || s.avg < 2) return;
+      const sc = s.fill * 2 + (s.distinct / Math.max(1, s.count)) * 2 + (s.avg <= 90 ? 1 : 0) - i * 0.15;
+      if (sc > score) { score = sc; best = i; }
+    });
+    t = best >= 0 ? best : 0;
+  }
+  roles[t] = 'title';
+  let d = hasHeader ? headers.findIndex((h, i) => roles[i] === 'attr' && RE_DESC.test(h)) : -1;
+  if (d < 0) {
+    let best = -1, avg = 40;
+    stats.forEach((s, i) => { if (roles[i] === 'attr' && !s.numeric && s.avg > avg) { avg = s.avg; best = i; } });
+    d = best;
+  }
+  if (d >= 0) roles[d] = 'desc';
+  return roles;
+}
+function buildFromTable(t) {
+  const items = [];
+  for (const r of t.data) {
+    let title = '', desc = [], tags = [], attrs = {};
+    t.roles.forEach((role, i) => {
+      const v = r[i]; if (!v) return;
+      if (role === 'title') title = title ? title + ' ' + v : v;
+      else if (role === 'desc') desc.push(v);
+      else if (role === 'tags') tags.push(...splitTags(v));
+      else if (role === 'attr') attrs[t.headers[i]] = v;
+    });
+    if (!title) continue;
+    const c = finalizeCand({ head: title, lines: [], section: '' });
+    items.push({ title: c.title, description: [c.description, ...desc].filter(Boolean).join('\n'), tags: uniq([...c.tags, ...tags]), attrs: { ...c.attrs, ...attrs } });
+  }
+  return items;
+}
+
+/* ================= HTML (Word, pasted rich text) ================= */
+function isBoldEl(n) {
+  const fw = n.style && n.style.fontWeight;
+  if (fw) return fw === 'bold' || +fw >= 600;
+  return n.tagName === 'STRONG' || n.tagName === 'B';
+}
+const BLOCK_SEL = 'p,div,ul,ol,table,h1,h2,h3,h4,h5,h6,li,blockquote,section,article,pre';
+function htmlToStructured(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  $$('script,style,head,title,meta', doc).forEach(n => n.remove());
+  const out = [], tables = [];
+  const inline = node => {
+    let s = '';
+    node.childNodes.forEach(n => {
+      if (n.nodeType === 3) { s += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      const t = n.tagName;
+      if (t === 'UL' || t === 'OL' || t === 'TABLE') return;
+      if (t === 'BR') { s += '\n'; return; }
+      const inner = inline(n);
+      if (isBoldEl(n) && inner.trim()) s += '**' + inner.trim() + '**' + (/\s$/.test(inner) ? ' ' : '');
+      else s += inner;
+    });
+    return s;
+  };
+  const flat = s => s.replace(/\s*\n\s*/g, ' ').replace(/\*\*\s*\*\*/g, '').replace(/[ \t]+/g, ' ').trim();
+  const walkList = (list, depth) => {
+    let i = 0;
+    [...list.children].forEach(li => {
+      if (li.tagName === 'UL' || li.tagName === 'OL') { walkList(li, depth + 1); return; }
+      i++;
+      const s = flat(inline(li));
+      if (s) out.push('  '.repeat(depth) + (list.tagName === 'OL' ? i + '. ' : '- ') + s);
+      $$(':scope ul, :scope ol', li).filter(l => l.parentElement.closest('li') === li).forEach(l => walkList(l, depth + 1));
+    });
+    if (depth === 0) out.push('');
+  };
+  const walk = node => {
+    node.childNodes.forEach(n => {
+      if (n.nodeType === 3) { if (n.nodeValue.trim()) out.push(n.nodeValue.trim()); return; }
+      if (n.nodeType !== 1) return;
+      const t = n.tagName;
+      if (/^H[1-6]$/.test(t)) { const s = flat(inline(n)).replace(/\*\*/g, ''); if (s) out.push('', '#'.repeat(+t[1]) + ' ' + s, ''); }
+      else if (t === 'UL' || t === 'OL') walkList(n, 0);
+      else if (t === 'TABLE') {
+        const rows = [...n.rows].map(r => [...r.cells].map(c => c.textContent.replace(/\s+/g, ' ').trim()));
+        if (rows.length) tables.push(rows);
+        rows.slice(1).forEach(r => { const cells = r.filter(Boolean); if (cells.length) out.push('- ' + cells[0] + (cells.length > 1 ? ' — ' + cells.slice(1).join('; ') : '')); });
+        out.push('');
+      }
+      else if (t === 'BR') out.push('');
+      else if (n.querySelector(BLOCK_SEL)) walk(n);
+      else { const s = inline(n).split('\n').map(x => x.replace(/[ \t]+/g, ' ').trim()); s.forEach(x => out.push(x)); out.push(''); }
+    });
+  };
+  walk(doc.body);
+  const text = out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { text, tables };
+}
+
+/* ================= Other formats ================= */
+function rtfToText(s) {
+  const dropGroup = (str, word) => {
+    let i;
+    while ((i = str.indexOf('{\\' + word)) >= 0) {
+      let depth = 0, j = i;
+      for (; j < str.length; j++) { if (str[j] === '{') depth++; else if (str[j] === '}') { depth--; if (!depth) break; } }
+      str = str.slice(0, i) + str.slice(j + 1);
+    }
+    return str;
+  };
+  ['fonttbl', 'colortbl', 'stylesheet', 'info', '*'].forEach(w => { s = dropGroup(s, w); });
+  return s.replace(/\\par[d]?\b ?/g, '\n').replace(/\\line\b ?/g, '\n').replace(/\\tab\b ?/g, '\t')
+    .replace(/\\'([0-9a-f]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\u(-?\d+)\??/g, (m, n) => String.fromCharCode((+n + 65536) % 65536))
+    .replace(/\\[a-z]+-?\d* ?/gi, '').replace(/\\([{}\\])/g, '$1').replace(/[{}]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+async function pdfToText(buf) {
+  await loadScript(LIB.pdf);
+  await loadScript(LIB.pdfWorker); // runs pdf.js on the page; no separate worker needed
+  const lib = window.pdfjsLib;
+  lib.GlobalWorkerOptions.workerSrc = LIB.pdfWorker;
+  const pdf = await lib.getDocument({ data: buf, isEvalSupported: false }).promise;
+  const out = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    let line = '', lastY = null, lastH = 12, lastX = null;
+    for (const it of tc.items) {
+      if (!('str' in it)) continue;
+      const y = it.transform[5], x = it.transform[4], h = it.height || lastH;
+      if (lastY !== null && Math.abs(y - lastY) > h * 0.5) {
+        out.push(line); line = '';
+        if (Math.abs(y - lastY) > lastH * 1.9) out.push('');
+        if (x > (lastX ?? x) + 8) line = '  ';
+      }
+      if (lastY === null || Math.abs(y - lastY) > h * 0.5) lastX = x;
+      line += it.str;
+      if (it.hasEOL) { out.push(line); line = ''; lastY = null; }
+      else lastY = y;
+      lastH = h || lastH;
+      if (it.hasEOL) lastY = y;
+    }
+    if (line) out.push(line);
+    out.push('');
+  }
+  return out.join('\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+}
+
+/* ================= Import flow ================= */
+let pv = null; // preview state
+
+function startPreview(source) {
+  // source: {name, text?, tables?: [{name, rows}], readAs?, backup?}
+  pv = { name: source.name, text: source.text || '', tables: source.tables || [], tableIndex: 0, mode: 'auto', items: [], checked: [], sectionTags: true, extraTags: '' };
+  if (source.backup) { pv.backup = source.backup; }
+  pv.readAs = source.readAs || (pv.tables.length && !pv.text ? 'table' : 'text');
+  if (pv.readAs === 'table') pv.table = analyzeTable(pv.tables[0].rows);
+  rebuildPreview();
+}
+function rebuildPreview() {
+  if (pv.backup) {
+    pv.items = pv.backup.map(i => ({ title: i.title, description: i.description || '', tags: i.tags || [], attrs: i.attrs || {} }));
+    pv.used = 'backup';
+  } else if (pv.readAs === 'table') {
+    pv.items = buildFromTable(pv.table); pv.used = 'table'; pv.skipped = 0;
+  } else {
+    const r = parseText(pv.text, pv.mode); pv.items = r.items; pv.used = r.used; pv.skipped = r.skipped;
+  }
+  const have = new Set(db.ideas.map(i => normTitle(i.title)));
+  const seen = new Set();
+  pv.items.forEach(it => {
+    const k = normTitle(it.title);
+    it.dup = have.has(k) || seen.has(k);
+    seen.add(k);
+  });
+  pv.checked = pv.items.map(it => !it.dup);
+  renderPreview();
+}
+const MODE_LABEL = { list: 'Each list item', heading: 'Each heading', block: 'Each paragraph', line: 'Each line' };
+const ROLE_LABEL = { title: 'Title', desc: 'Description', tags: 'Tags', attr: 'Attribute', ignore: 'Ignore' };
+
+function renderPreview() {
+  const el = $('#preview');
+  el.hidden = false;
+  const n = pv.checked.filter(Boolean).length;
+  const dups = pv.items.filter(i => i.dup).length;
+  const hasSections = pv.items.some(i => i.attrs.Section);
+  const canTable = pv.tables.length > 0 || looksTabular(pv.text);
+  let controls = '';
+  if (!pv.backup) {
+    controls += `<div class="preview-controls">`;
+    if (canTable && pv.text) controls += `
+      <label class="field" for="pvRead"><span>Read as</span>
+        <select id="pvRead"><option value="text"${pv.readAs === 'text' ? ' selected' : ''}>Text and lists</option><option value="table"${pv.readAs === 'table' ? ' selected' : ''}>Table (rows and columns)</option></select>
+      </label>`;
+    if (pv.readAs === 'table' && pv.tables.length > 1) controls += `
+      <label class="field" for="pvSheet"><span>Table</span>
+        <select id="pvSheet">${pv.tables.map((t, i) => `<option value="${i}"${i === pv.tableIndex ? ' selected' : ''}>${esc(t.name)} (${t.rows.length} rows)</option>`).join('')}</select>
+      </label>`;
+    if (pv.readAs === 'text') controls += `
+      <label class="field" for="pvMode"><span>One idea per</span>
+        <select id="pvMode">
+          <option value="auto"${pv.mode === 'auto' ? ' selected' : ''}>Automatic (${MODE_LABEL[pv.used].toLowerCase()})</option>
+          <option value="list"${pv.mode === 'list' ? ' selected' : ''}>List item</option>
+          <option value="heading"${pv.mode === 'heading' ? ' selected' : ''}>Heading</option>
+          <option value="block"${pv.mode === 'block' ? ' selected' : ''}>Paragraph</option>
+          <option value="line"${pv.mode === 'line' ? ' selected' : ''}>Line</option>
+        </select>
+      </label>`;
+    controls += `
+      <label class="field" for="pvTags"><span>Add tags to every idea</span>
+        <input type="text" id="pvTags" list="tagOptions" placeholder="e.g. brainstorm, 2026" value="${esc(pv.extraTags)}">
+      </label>`;
+    if (hasSections) controls += `<label class="check"><input type="checkbox" id="pvSection"${pv.sectionTags ? ' checked' : ''}> Turn section headings into tags</label>`;
+    controls += `</div>`;
+    if (pv.readAs === 'table') {
+      controls += `<div><p class="label">What each column holds</p><div class="mapping">${pv.table.headers.map((h, i) => `
+        <label class="field" for="role-${i}"><span>${esc(h)}</span>
+          <select id="role-${i}" data-col="${i}">${Object.entries(ROLE_LABEL).map(([k, v]) => `<option value="${k}"${pv.table.roles[i] === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
+        </label>`).join('')}</div></div>`;
+    }
+  }
+  const notes = [];
+  if (dups) notes.push(`${plural(dups, 'idea')} already in your index ${dups === 1 ? 'is' : 'are'} unchecked.`);
+  if (pv.skipped) notes.push(`${plural(pv.skipped, 'line')} of other text ${pv.skipped === 1 ? 'was' : 'were'} skipped. If ideas are missing, try another “One idea per” option.`);
+  const list = pv.items.length ? pv.items.map((it, i) => `
+    <div class="cand${pv.checked[i] ? '' : ' off'}">
+      <input type="checkbox" data-i="${i}" id="cand-${i}"${pv.checked[i] ? ' checked' : ''} aria-label="Include ${esc(it.title)}">
+      <div style="display:grid;gap:.25rem;min-width:0">
+        <label class="sr-only" for="ct-${i}">Title</label>
+        <input type="text" id="ct-${i}" data-ti="${i}" class="cand-title" value="${esc(it.title)}">
+        ${it.description ? `<p class="cand-desc">${esc(it.description)}</p>` : ''}
+        <div class="cand-meta">
+          ${it.dup ? '<span class="badge warn">Already in index</span>' : ''}
+          ${it.tags.map(t => `<span class="badge">#${esc(t)}</span>`).join('')}
+          ${Object.entries(it.attrs).map(([k, v]) => `<span class="meta">${esc(k)}: <strong>${esc(v)}</strong></span>`).join(' · ')}
+        </div>
+      </div>
+    </div>`).join('') : `<div class="empty"><h3>No ideas found</h3><p>Try a different “One idea per” option${canTable ? ' or read it as a table' : ''}.</p></div>`;
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <h3>Found ${plural(pv.items.length, 'idea')} in ${esc(pv.name)}</h3>
+      ${pv.items.length ? `<div class="row"><button class="btn small quiet" id="pvAll">Select all</button><button class="btn small quiet" id="pvNone">Select none</button></div>` : ''}
+    </div>
+    ${controls}
+    ${notes.length ? `<p class="hint">${notes.map(esc).join(' ')}</p>` : ''}
+    <div class="cand-list">${list}</div>
+    <div class="row end">
+      <button class="btn" id="pvCancel">Cancel</button>
+      <button class="btn primary" id="pvImport"${n ? '' : ' disabled'}>Add ${plural(n, 'idea')}</button>
+    </div>`;
+}
+
+$('#preview').addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'pvRead') {
+    pv.readAs = t.value;
+    if (pv.readAs === 'table') {
+      if (!pv.tables.length) pv.tables = [{ name: 'Pasted table', rows: parseDelimited(pv.text) }];
+      pv.table = analyzeTable(pv.tables[pv.tableIndex].rows);
+    }
+    rebuildPreview();
+  } else if (t.id === 'pvSheet') { pv.tableIndex = +t.value; pv.table = analyzeTable(pv.tables[pv.tableIndex].rows); rebuildPreview(); }
+  else if (t.id === 'pvMode') { pv.mode = t.value; rebuildPreview(); }
+  else if (t.dataset.col) {
+    const col = +t.dataset.col;
+    if (t.value === 'title') pv.table.roles = pv.table.roles.map(r => r === 'title' ? 'attr' : r);
+    if (t.value === 'desc') pv.table.roles = pv.table.roles.map(r => r === 'desc' ? 'attr' : r);
+    pv.table.roles[col] = t.value; rebuildPreview();
+  }
+  else if (t.id === 'pvSection') pv.sectionTags = t.checked;
+  else if (t.dataset.i) { pv.checked[+t.dataset.i] = t.checked; t.closest('.cand').classList.toggle('off', !t.checked); updateImportBtn(); }
+});
+$('#preview').addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'pvTags') pv.extraTags = t.value;
+  else if (t.dataset.ti) pv.items[+t.dataset.ti].title = t.value;
+});
+$('#preview').addEventListener('click', e => {
+  const id = e.target.id;
+  if (id === 'pvAll' || id === 'pvNone') { pv.checked = pv.items.map(() => id === 'pvAll'); renderPreview(); }
+  else if (id === 'pvCancel') closePreview();
+  else if (id === 'pvImport') commitImport();
+});
+function updateImportBtn() {
+  const n = pv.checked.filter(Boolean).length;
+  const b = $('#pvImport'); if (b) { b.disabled = !n; b.textContent = `Add ${plural(n, 'idea')}`; }
+}
+function closePreview() { pv = null; $('#preview').hidden = true; $('#preview').innerHTML = ''; }
+
+function commitImport() {
+  const extra = splitTags(pv.extraTags);
+  const now = Date.now();
+  const added = [];
+  pv.items.forEach((it, i) => {
+    if (!pv.checked[i] || !it.title.trim()) return;
+    const tags = uniq([...it.tags.map(normTag), ...extra, ...(pv.sectionTags && it.attrs.Section ? [normTag(it.attrs.Section)] : [])]).filter(Boolean);
+    const attrs = { ...it.attrs };
+    if (pv.sectionTags && attrs.Section) delete attrs.Section;
+    added.push({ id: uid(), title: it.title.trim(), description: it.description || '', tags, attrs, source: pv.name, created: now + i, updated: now + i });
+  });
+  db.ideas.push(...added);
+  saveDb();
+  closePreview();
+  $('#pasteBox').value = '';
+  setStatus('#pasteStatus', ''); setStatus('#fileStatus', '');
+  render();
+  toast(`Added ${plural(added.length, 'idea')}.`, () => {
+    const ids = new Set(added.map(a => a.id));
+    db.ideas = db.ideas.filter(i => !ids.has(i.id)); saveDb(); render();
+    toast('Import undone.');
+  });
+}
+
+function setStatus(sel, msg, err) { const el = $(sel); el.textContent = msg; el.classList.toggle('error', !!err); }
+
+function tryBackup(text) {
+  try {
+    const d = JSON.parse(text);
+    if (d && Array.isArray(d.ideas) && d.app === 'IdeaTank') return d.ideas;
+  } catch (e) {}
+  return null;
+}
+
+async function readFile(file) {
+  const name = file.name;
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (ext === 'docx') {
+    await loadScript(LIB.mammoth);
+    const buf = await file.arrayBuffer();
+    const r = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+    const s = htmlToStructured(r.value);
+    const tables = s.tables.filter(t => t.length >= 2).map((rows, i) => ({ name: `Table ${i + 1}`, rows }));
+    const bulletCount = toLines(s.text).filter(l => BULLET.test(l)).length;
+    const big = tables.reduce((m, t) => Math.max(m, t.rows.length), 0);
+    tables.sort((a, b) => b.rows.length - a.rows.length);
+    return { name, text: s.text, tables, readAs: big >= 3 && big >= bulletCount - big ? 'table' : 'text' };
+  }
+  if (ext === 'doc') throw new Error(`${name} is an older Word format. Open it in Word or Google Docs and save it as .docx, then try again.`);
+  if (ext === 'pdf') {
+    const text = await pdfToText(await file.arrayBuffer());
+    if (!text.trim()) throw new Error(`${name} has no selectable text. It may be a scanned image.`);
+    return { name, text };
+  }
+  if (['xlsx', 'xls', 'ods', 'xlsm'].includes(ext)) {
+    await loadScript(LIB.xlsx);
+    const wb = window.XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const tables = wb.SheetNames.map(sn => ({ name: sn, rows: window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: false, defval: '' }) }))
+      .filter(t => t.rows.some(r => r.some(c => String(c).trim())));
+    if (!tables.length) throw new Error(`${name} has no filled cells.`);
+    return { name, tables, readAs: 'table' };
+  }
+  const text = await file.text();
+  if (ext === 'csv' || ext === 'tsv') return { name, text, tables: [{ name, rows: parseDelimited(text, ext === 'tsv' ? '\t' : undefined) }], readAs: 'table' };
+  if (ext === 'json') {
+    const backup = tryBackup(text);
+    if (backup) return { name, backup };
+    let d; try { d = JSON.parse(text); } catch (e) { throw new Error(`${name} isn't valid JSON.`); }
+    if (Array.isArray(d) && d.every(x => typeof x === 'string')) return { name, text: d.join('\n') };
+    if (Array.isArray(d) && d.length && typeof d[0] === 'object') {
+      const keys = uniq(d.flatMap(o => Object.keys(o || {})));
+      const rows = [keys, ...d.map(o => keys.map(k => { const v = o?.[k]; return Array.isArray(v) ? v.join(', ') : v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v); }))];
+      return { name, tables: [{ name, rows }], readAs: 'table' };
+    }
+    return { name, text };
+  }
+  if (ext === 'rtf') return { name, text: rtfToText(text) };
+  if (ext === 'html' || ext === 'htm') {
+    const s = htmlToStructured(text);
+    return { name, text: s.text, tables: s.tables.filter(t => t.length >= 2).map((rows, i) => ({ name: `Table ${i + 1}`, rows })) };
+  }
+  return { name, text, readAs: looksTabular(text) ? 'table' : 'text', tables: looksTabular(text) ? [{ name, rows: parseDelimited(text) }] : [] };
+}
+
+async function handleFiles(files) {
+  files = [...files];
+  if (!files.length) return;
+  setStatus('#fileStatus', `Reading ${files.length === 1 ? files[0].name : plural(files.length, 'file')}…`);
+  const sources = [];
+  for (const f of files) {
+    try { sources.push(await readFile(f)); }
+    catch (e) { setStatus('#fileStatus', e.message || `Couldn't read ${f.name}.`, true); return; }
+  }
+  setStatus('#fileStatus', '');
+  if (sources.length === 1) { startPreview(sources[0]); return; }
+  // Several files: combine their text; tables become separate tables
+  const text = sources.filter(s => s.text && s.readAs !== 'table').map(s => s.text).join('\n\n');
+  const tables = sources.flatMap(s => (s.readAs === 'table' ? s.tables : []).map(t => ({ ...t, name: `${s.name}: ${t.name}` })));
+  const backup = sources.flatMap(s => s.backup || []);
+  if (backup.length) { startPreview({ name: plural(sources.length, 'file'), backup }); return; }
+  startPreview({ name: plural(sources.length, 'file'), text, tables, readAs: text ? 'text' : 'table' });
+}
+
+/* paste & file wiring */
+const pasteBox = $('#pasteBox');
+pasteBox.addEventListener('paste', e => {
+  const html = e.clipboardData && e.clipboardData.getData('text/html');
+  if (!html) return;
+  const s = htmlToStructured(html);
+  if (s.tables.length && !toLines(s.text).some(l => /\S/.test(l) && !BULLET.test(l) && !HEADING.test(l)) || s.tables.length && s.tables[0].length >= 2 && s.text.split('\n').length <= s.tables[0].length + 2) {
+    // spreadsheet cells: keep as tab-separated rows
+    e.preventDefault();
+    insertAtCursor(pasteBox, s.tables[0].map(r => r.join('\t')).join('\n'));
+  } else if (s.text) {
+    e.preventDefault();
+    insertAtCursor(pasteBox, s.text);
+  }
+});
+function insertAtCursor(ta, text) {
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + text + ta.value.slice(b);
+  ta.selectionStart = ta.selectionEnd = a + text.length;
+}
+$('#extractPaste').addEventListener('click', () => {
+  const text = pasteBox.value;
+  if (!text.trim()) { setStatus('#pasteStatus', 'Paste some text first.', true); pasteBox.focus(); return; }
+  setStatus('#pasteStatus', '');
+  const backup = tryBackup(text);
+  if (backup) { startPreview({ name: 'pasted backup', backup }); return; }
+  const tab = looksTabular(text);
+  startPreview({ name: 'pasted text', text, readAs: tab ? 'table' : 'text', tables: tab ? [{ name: 'Pasted table', rows: parseDelimited(text) }] : [] });
+});
+const SAMPLE_TEXT = `Product ideas from the spring workshop
+
+## Kitchen
+- **Smart spice rack**: weighs each jar and adds low spices to your shopping list.
+  - Effort: Medium
+  - Owner: Dana
+- Compost caddy with odor sensor — tells you when it's time to empty it. #hardware
+- Recipe scaler that converts cups to grams for a different pan size
+
+## Travel
+1. Luggage that reports its own weight
+   A scale built into the handle so you never pay overweight fees.
+   Tags: hardware, travel
+2. Offline phrasebook stickers for hotel rooms #travel
+3. Layover planner: suggests what you can see before your next flight.
+   Cost: Low`;
+$('#trySample').addEventListener('click', () => { pasteBox.value = SAMPLE_TEXT; setStatus('#pasteStatus', 'Sample notes added. Select “Find ideas”.'); $('#extractPaste').focus(); });
+
+const drop = $('#drop'), fileInput = $('#fileInput');
+fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+// Let people drop a file anywhere on the page
+document.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
+document.addEventListener('drop', e => {
+  if (e.target.closest && e.target.closest('#drop')) return;
+  if (e.dataTransfer?.files?.length) { e.preventDefault(); openImport('file'); handleFiles(e.dataTransfer.files); }
+});
+
+function openImport(tab) {
+  $('#importer').hidden = false;
+  $('#toggleImport').setAttribute('aria-expanded', 'true');
+  selectTab(tab || 'paste');
+}
+function selectTab(tab) {
+  ['paste', 'file'].forEach(t => {
+    $('#tab-' + t).setAttribute('aria-selected', String(t === tab));
+    $('#pane-' + t).hidden = t !== tab;
+  });
+}
+$('#tab-paste').addEventListener('click', () => selectTab('paste'));
+$('#tab-file').addEventListener('click', () => selectTab('file'));
+$('#toggleImport').addEventListener('click', () => {
+  if ($('#importer').hidden) { openImport('paste'); pasteBox.focus(); }
+  else { $('#importer').hidden = true; $('#toggleImport').setAttribute('aria-expanded', 'false'); }
+});
+$('#closeImport').addEventListener('click', () => { $('#importer').hidden = true; $('#toggleImport').setAttribute('aria-expanded', 'false'); $('#toggleImport').focus(); });
+
+/* ================= Index: filter, sort, render ================= */
+const view = { q: '', tags: new Set(), untagged: false, selected: new Set(), limit: 150, expanded: new Set(), managing: false, editingTag: null, confirmTag: null };
+
+function parseQuery(q) {
+  const terms = [], tags = [];
+  const re = /"([^"]+)"|(\S+)/g; let m;
+  while ((m = re.exec(q))) {
+    const w = (m[1] || m[2]).toLowerCase();
+    if (!m[1] && /^tag:./.test(w)) tags.push(normTag(w.slice(4)));
+    else if (!m[1] && /^#./.test(w)) tags.push(normTag(w));
+    else terms.push(w);
+  }
+  return { terms, tags };
+}
+function haystack(i) {
+  return (i.title + '\n' + i.description + '\n' + i.tags.join(' ') + '\n' + Object.entries(i.attrs || {}).map(([k, v]) => k + ' ' + v).join('\n')).toLowerCase();
+}
+function filtered() {
+  const { terms, tags } = parseQuery(view.q);
+  const sel = [...view.tags];
+  return db.ideas.filter(i => {
+    if (view.untagged && i.tags.length) return false;
+    if (sel.length) {
+      if (prefs.match === 'all' ? !sel.every(t => i.tags.includes(t)) : !sel.some(t => i.tags.includes(t))) return false;
+    }
+    if (tags.length && !tags.every(t => i.tags.some(x => x.startsWith(t)))) return false;
+    if (terms.length) { const h = haystack(i); if (!terms.every(t => h.includes(t))) return false; }
+    return true;
+  });
+}
+const coll = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+function sorted(list) {
+  const by = {
+    new: (a, b) => b.created - a.created,
+    old: (a, b) => a.created - b.created,
+    edited: (a, b) => b.updated - a.updated,
+    az: (a, b) => coll.compare(a.title, b.title),
+    za: (a, b) => coll.compare(b.title, a.title),
+    tag: (a, b) => {
+      const ta = [...a.tags].sort(coll.compare).join(' '), tb = [...b.tags].sort(coll.compare).join(' ');
+      if (!ta !== !tb) return ta ? -1 : 1;
+      return coll.compare(ta, tb) || coll.compare(a.title, b.title);
+    },
+    ntags: (a, b) => b.tags.length - a.tags.length || coll.compare(a.title, b.title),
+    untagged: (a, b) => a.tags.length - b.tags.length || b.created - a.created,
+  }[prefs.sort] || ((a, b) => b.created - a.created);
+  return [...list].sort(by);
+}
+function tagCounts() {
+  const m = new Map();
+  db.ideas.forEach(i => i.tags.forEach(t => m.set(t, (m.get(t) || 0) + 1)));
+  return m;
+}
+
+function hl(text, terms) {
+  let s = esc(text);
+  if (!terms.length) return s;
+  const parts = terms.map(t => esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean);
+  if (!parts.length) return s;
+  const re = new RegExp('(' + parts.join('|') + ')', 'gi');
+  // only replace outside of entities
+  return s.split(/(&[a-z#0-9]+;)/i).map(seg => seg.startsWith('&') && seg.endsWith(';') ? seg : seg.replace(re, '<mark>$1</mark>')).join('');
+}
+
+function ideaHTML(i, terms) {
+  const full = prefs.full || view.expanded.has(i.id);
+  const long = i.description && (i.description.length > 320 || i.description.split('\n').length > 4);
+  const attrs = Object.entries(i.attrs || {});
+  const sel = view.selected.has(i.id);
+  return `<article class="idea${sel ? ' sel' : ''}" data-id="${i.id}">
+    <input type="checkbox" class="pick" id="pick-${i.id}"${sel ? ' checked' : ''} aria-label="Select ${esc(i.title)}">
+    <div class="idea-body">
+      <h3 class="idea-title">${hl(i.title, terms)}</h3>
+      ${i.description ? `<p class="idea-desc${full ? '' : ' clamp'}">${hl(i.description, terms)}</p>${long && !prefs.full ? `<button class="more" data-act="more">${full ? 'Show less' : 'Show more'}</button>` : ''}` : ''}
+      ${attrs.length ? `<dl class="attrs">${attrs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${hl(v, terms)}</dd></div>`).join('')}</dl>` : ''}
+      <div class="tags">
+        ${i.tags.map(t => `<span class="tag${view.tags.has(t) ? ' on' : ''}"><button class="t" data-act="filter" data-tag="${esc(t)}" aria-label="Show ideas tagged ${esc(t)}">${hl(t, terms)}</button><button class="x" data-act="untag" data-tag="${esc(t)}" aria-label="Remove tag ${esc(t)} from ${esc(i.title)}">×</button></span>`).join('')}
+        <button class="add-tag" data-act="addtag">+ Tag</button>
+      </div>
+      ${i.source ? `<p class="meta">From ${esc(i.source)}</p>` : ''}
+    </div>
+    <button class="btn small edit" data-act="edit">Edit</button>
+  </article>`;
+}
+
+function render() {
+  const total = db.ideas.length;
+  $('#countLabel').textContent = plural(total, 'idea');
+  $('#sampleBanner').hidden = !db.ideas.some(i => i.sample);
+
+  // tag rail
+  const counts = tagCounts();
+  for (const t of [...view.tags]) if (!counts.has(t)) view.tags.delete(t);
+  let tags = [...counts.entries()];
+  tags.sort(prefs.tagSort === 'name' ? (a, b) => coll.compare(a[0], b[0]) : (a, b) => b[1] - a[1] || coll.compare(a[0], b[0]));
+  $('#tagCount').textContent = counts.size ? `(${counts.size})` : '';
+  $('#tagOptions').innerHTML = tags.map(([t]) => `<option value="${esc(t)}">`).join('');
+  const untaggedN = db.ideas.filter(i => !i.tags.length).length;
+  const rows = tags.map(([t, n]) => {
+    if (view.managing && view.editingTag === t) return `<li><label class="sr-only" for="rename-input">Rename ${esc(t)}</label><input type="text" id="rename-input" class="tag-input" value="${esc(t)}" data-old="${esc(t)}" style="width:100%!important"></li>`;
+    if (view.managing && view.confirmTag === t) return `<li style="flex-wrap:wrap"><span style="flex:1 1 100%">Remove <strong>#${esc(t)}</strong> from ${plural(n, 'idea')}?</span><button class="btn small danger" data-tact="confirm-del" data-tag="${esc(t)}">Remove tag</button><button class="btn small" data-tact="cancel">Keep</button></li>`;
+    return `<li><button class="tagfilter" data-tact="toggle" data-tag="${esc(t)}" aria-pressed="${view.tags.has(t)}"><span class="nm">#${esc(t)}</span><span class="n">${n}</span></button>${view.managing ? `<button class="icon-btn" data-tact="rename" data-tag="${esc(t)}" aria-label="Rename ${esc(t)}" title="Rename">✎</button><button class="icon-btn" data-tact="del" data-tag="${esc(t)}" aria-label="Delete tag ${esc(t)}" title="Delete">🗑</button>` : ''}</li>`;
+  });
+  if (untaggedN && total) rows.push(`<li><button class="tagfilter" data-tact="untagged" aria-pressed="${view.untagged}"><span class="nm">Untagged</span><span class="n">${untaggedN}</span></button></li>`);
+  $('#tagList').innerHTML = rows.join('') || '';
+  $('#tagHint').textContent = counts.size ? (view.managing ? 'Rename a tag to change it everywhere. Renaming to an existing tag merges them.' : 'Select a tag to filter. Select more than one to combine them.') : 'No tags yet. Add tags to ideas with “+ Tag”.';
+  const ren = $('#rename-input'); if (ren) { ren.focus(); ren.select(); }
+
+  // active filters
+  const chips = [...view.tags].map(t => `<span class="tag on solo"><button class="t" data-act="filter" data-tag="${esc(t)}" aria-label="Stop filtering by ${esc(t)}">${esc(t)} ✕</button></span>`);
+  if (view.untagged) chips.push(`<span class="tag on solo"><button class="t" data-act="untagged-off">Untagged ✕</button></span>`);
+  $('#activeFilters').innerHTML = chips.length ? `<span class="meta">Filtered by ${prefs.match === 'all' && view.tags.size > 1 ? 'all of' : view.tags.size > 1 ? 'any of' : ''}</span>${chips.join('')}<button class="btn small quiet" data-act="clear-filters">Clear filters</button>` : '';
+
+  // list
+  const { terms } = parseQuery(view.q);
+  const list = sorted(filtered());
+  const shown = list.slice(0, view.limit);
+  const filteredOn = view.q || view.tags.size || view.untagged;
+  $('#resultLabel').textContent = !total ? '' : filteredOn ? `${plural(list.length, 'idea')} match` : `Showing all ${plural(list.length, 'idea')}`;
+  const visibleIds = shown.map(i => i.id);
+  const sa = $('#selectAll');
+  sa.disabled = !visibleIds.length;
+  sa.checked = visibleIds.length > 0 && visibleIds.every(id => view.selected.has(id));
+  sa.indeterminate = !sa.checked && visibleIds.some(id => view.selected.has(id));
+
+  const box = $('#ideas');
+  if (!total) {
+    box.innerHTML = `<div class="empty"><h3>Your index is empty</h3><p>Paste a list or upload a document or spreadsheet. IdeaTank finds the ideas in it and lets you tag and sort them.</p><button class="btn primary" data-act="open-import">Add ideas</button></div>`;
+  } else if (!list.length) {
+    box.innerHTML = `<div class="empty"><h3>No ideas match</h3><p>Try fewer words, or clear the tag filters.</p><button class="btn" data-act="clear-filters">Clear search and filters</button></div>`;
+  } else if (prefs.group) {
+    const groups = new Map();
+    shown.forEach(i => (i.tags.length ? i.tags : ['']).forEach(t => { if (!groups.has(t)) groups.set(t, []); groups.get(t).push(i); }));
+    let keys = [...groups.keys()].sort((a, b) => !a ? 1 : !b ? -1 : coll.compare(a, b));
+    if (view.tags.size) keys = [...keys.filter(k => view.tags.has(k)), ...keys.filter(k => !view.tags.has(k))];
+    box.innerHTML = keys.map(k => `<section aria-label="${k ? 'Tag ' + esc(k) : 'Untagged'}"><h2 class="group-title">${k ? '#' + esc(k) : 'Untagged'} <span class="n">${groups.get(k).length}</span></h2>${groups.get(k).map(i => ideaHTML(i, terms)).join('')}</section>`).join('');
+  } else {
+    box.innerHTML = shown.map(i => ideaHTML(i, terms)).join('');
+  }
+  if (list.length > shown.length) box.insertAdjacentHTML('beforeend', `<div class="show-more"><button class="btn" data-act="show-more">Show ${Math.min(150, list.length - shown.length)} more of ${list.length - shown.length}</button></div>`);
+
+  renderBulk();
+}
+function renderBulk() {
+  for (const id of [...view.selected]) if (!db.ideas.some(i => i.id === id)) view.selected.delete(id);
+  const n = view.selected.size;
+  $('#bulk').hidden = !n;
+  $('#bulkCount').textContent = `${n} selected`;
+}
+
+/* ================= Index interactions ================= */
+const find = id => db.ideas.find(i => i.id === id);
+function touch(i) { i.updated = Date.now(); }
+
+$('#ideas').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const art = b.closest('.idea');
+  const idea = art && find(art.dataset.id);
+  const act = b.dataset.act;
+  if (act === 'filter') { toggleTag(b.dataset.tag); }
+  else if (act === 'untag' && idea) {
+    const t = b.dataset.tag;
+    idea.tags = idea.tags.filter(x => x !== t); touch(idea); saveDb(); render();
+    toast(`Removed #${t}.`, () => { idea.tags.push(t); saveDb(); render(); });
+  }
+  else if (act === 'addtag' && idea) startInlineTag(b, idea);
+  else if (act === 'edit' && idea) openEditor(idea);
+  else if (act === 'more' && idea) { view.expanded.has(idea.id) ? view.expanded.delete(idea.id) : view.expanded.add(idea.id); render(); focusIdea(idea.id, '.more'); }
+  else if (act === 'show-more') { view.limit += 150; render(); }
+  else if (act === 'open-import') { openImport('paste'); pasteBox.focus(); }
+  else if (act === 'clear-filters') clearFilters();
+});
+$('#activeFilters').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'filter') toggleTag(b.dataset.tag);
+  else if (b.dataset.act === 'untagged-off') { view.untagged = false; render(); }
+  else if (b.dataset.act === 'clear-filters') clearFilters();
+});
+function clearFilters() { view.tags.clear(); view.untagged = false; view.q = ''; $('#search').value = ''; render(); }
+function focusIdea(id, sel) { const el = $(`.idea[data-id="${id}"] ${sel}`); if (el) el.focus(); }
+function toggleTag(t) { view.tags.has(t) ? view.tags.delete(t) : view.tags.add(t); view.limit = 150; render(); }
+
+$('#ideas').addEventListener('change', e => {
+  if (!e.target.classList.contains('pick')) return;
+  const id = e.target.closest('.idea').dataset.id;
+  e.target.checked ? view.selected.add(id) : view.selected.delete(id);
+  $$(`.idea[data-id="${id}"]`).forEach(a => { a.classList.toggle('sel', e.target.checked); $('.pick', a).checked = e.target.checked; });
+  renderBulk();
+  const vis = $$('.idea').map(a => a.dataset.id);
+  const sa = $('#selectAll'); sa.checked = vis.every(x => view.selected.has(x)); sa.indeterminate = !sa.checked && vis.some(x => view.selected.has(x));
+});
+$('#selectAll').addEventListener('change', e => {
+  const vis = uniq($$('.idea').map(a => a.dataset.id));
+  vis.forEach(id => e.target.checked ? view.selected.add(id) : view.selected.delete(id));
+  render();
+});
+
+function startInlineTag(btn, idea) {
+  const input = document.createElement('input');
+  input.type = 'text'; input.className = 'tag-input'; input.setAttribute('list', 'tagOptions');
+  input.placeholder = 'New tag'; input.setAttribute('aria-label', `Add tags to ${idea.title}. Separate with commas.`);
+  btn.replaceWith(input); input.focus();
+  let done = false;
+  const commit = keepOpen => {
+    if (done) return;
+    const add = splitTags(input.value).filter(t => !idea.tags.includes(t));
+    if (add.length) { idea.tags.push(...add); touch(idea); saveDb(); }
+    if (keepOpen && add.length) { render(); const nb = $(`.idea[data-id="${idea.id}"] .add-tag`); if (nb) startInlineTag(nb, idea); return; }
+    done = true; render(); focusIdea(idea.id, '.add-tag');
+  };
+  input.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); commit(true); }
+    else if (ev.key === 'Escape') { done = true; render(); focusIdea(idea.id, '.add-tag'); }
+  });
+  input.addEventListener('blur', () => setTimeout(() => commit(false), 0));
+}
+
+/* tag rail */
+$('#tagList').addEventListener('click', e => {
+  const b = e.target.closest('[data-tact]'); if (!b) return;
+  const t = b.dataset.tag, a = b.dataset.tact;
+  if (a === 'toggle') toggleTag(t);
+  else if (a === 'untagged') { view.untagged = !view.untagged; render(); }
+  else if (a === 'rename') { view.editingTag = t; view.confirmTag = null; render(); }
+  else if (a === 'del') { view.confirmTag = t; view.editingTag = null; render(); }
+  else if (a === 'cancel') { view.confirmTag = null; render(); }
+  else if (a === 'confirm-del') {
+    const before = db.ideas.map(i => [i, [...i.tags]]);
+    db.ideas.forEach(i => { if (i.tags.includes(t)) { i.tags = i.tags.filter(x => x !== t); touch(i); } });
+    view.confirmTag = null; view.tags.delete(t); saveDb(); render();
+    toast(`Deleted #${t}.`, () => { before.forEach(([i, tg]) => { i.tags = tg; }); saveDb(); render(); });
+  }
+});
+$('#tagList').addEventListener('keydown', e => {
+  if (e.target.id !== 'rename-input') return;
+  if (e.key === 'Escape') { view.editingTag = null; render(); }
+  if (e.key === 'Enter') { e.preventDefault(); doRename(e.target); }
+});
+$('#tagList').addEventListener('focusout', e => { if (e.target.id === 'rename-input' && view.editingTag) doRename(e.target); });
+function doRename(input) {
+  const old = input.dataset.old, nu = normTag(input.value);
+  view.editingTag = null;
+  if (nu && nu !== old) {
+    db.ideas.forEach(i => { if (i.tags.includes(old)) { i.tags = uniq(i.tags.map(x => x === old ? nu : x)); touch(i); } });
+    if (view.tags.delete(old)) view.tags.add(nu);
+    saveDb(); toast(`Renamed #${old} to #${nu}.`);
+  }
+  render();
+}
+$('#manageTags').addEventListener('click', e => {
+  view.managing = !view.managing; view.editingTag = view.confirmTag = null;
+  e.currentTarget.setAttribute('aria-pressed', String(view.managing));
+  e.currentTarget.textContent = view.managing ? 'Done' : 'Edit tags';
+  render();
+});
+$('#tagSort').addEventListener('change', e => { prefs.tagSort = e.target.value; savePrefs(); render(); });
+$$('input[name="match"]').forEach(r => r.addEventListener('change', () => { prefs.match = r.value; savePrefs(); render(); }));
+
+/* toolbar */
+let qTimer;
+$('#search').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => { view.q = e.target.value; view.limit = 150; render(); }, 120); });
+$('#sort').addEventListener('change', e => { prefs.sort = e.target.value; savePrefs(); render(); });
+$('#groupByTag').addEventListener('change', e => { prefs.group = e.target.checked; savePrefs(); render(); });
+$('#showFull').addEventListener('change', e => { prefs.full = e.target.checked; savePrefs(); render(); });
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !e.target.closest('input, textarea, select, [contenteditable]') && !$('#editDlg').open) { e.preventDefault(); $('#search').focus(); }
+});
+
+/* bulk */
+const selectedIdeas = () => db.ideas.filter(i => view.selected.has(i.id));
+$('#bulkAdd').addEventListener('click', () => {
+  const tags = splitTags($('#bulkTag').value);
+  if (!tags.length) { $('#bulkTag').focus(); toast('Type a tag name first.'); return; }
+  const list = selectedIdeas();
+  list.forEach(i => { const add = tags.filter(t => !i.tags.includes(t)); if (add.length) { i.tags.push(...add); touch(i); } });
+  saveDb(); $('#bulkTag').value = ''; render(); toast(`Tagged ${plural(list.length, 'idea')} with ${tags.map(t => '#' + t).join(', ')}.`);
+});
+$('#bulkRemove').addEventListener('click', () => {
+  const tags = splitTags($('#bulkTag').value);
+  if (!tags.length) { $('#bulkTag').focus(); toast('Type the tag to remove first.'); return; }
+  const list = selectedIdeas();
+  list.forEach(i => { const n = i.tags.length; i.tags = i.tags.filter(t => !tags.includes(t)); if (i.tags.length !== n) touch(i); });
+  saveDb(); $('#bulkTag').value = ''; render(); toast(`Removed ${tags.map(t => '#' + t).join(', ')} from ${plural(list.length, 'idea')}.`);
+});
+$('#bulkTag').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#bulkAdd').click(); } });
+$('#bulkDelete').addEventListener('click', () => {
+  const ids = new Set(view.selected);
+  const removed = db.ideas.filter(i => ids.has(i.id));
+  db.ideas = db.ideas.filter(i => !ids.has(i.id));
+  view.selected.clear(); saveDb(); render();
+  toast(`Deleted ${plural(removed.length, 'idea')}.`, () => { db.ideas.push(...removed); saveDb(); render(); });
+});
+$('#bulkClear').addEventListener('click', () => { view.selected.clear(); render(); });
+
+/* ================= Editor dialog ================= */
+const dlg = $('#editDlg');
+let editing = null, delArmed = false;
+function attrRow(k = '', v = '') {
+  const n = uid();
+  return `<div class="attr-row"><input type="text" id="ak-${n}" aria-label="Attribute name" placeholder="Name, e.g. Effort" value="${esc(k)}"><input type="text" id="av-${n}" aria-label="Attribute value" placeholder="Value, e.g. Low" value="${esc(v)}"><button type="button" class="btn small quiet" data-rm aria-label="Remove attribute">Remove</button></div>`;
+}
+function openEditor(idea) {
+  editing = idea || null; delArmed = false;
+  $('#editTitle').textContent = idea ? 'Edit idea' : 'New idea';
+  $('#fTitle').value = idea ? idea.title : '';
+  $('#fDesc').value = idea ? idea.description : '';
+  $('#fTags').value = idea ? idea.tags.join(', ') : [...view.tags].join(', ');
+  const attrs = idea ? Object.entries(idea.attrs || {}) : [];
+  $('#attrRows').innerHTML = attrs.map(([k, v]) => attrRow(k, v)).join('');
+  $('#fDelete').hidden = !idea; $('#fDelete').textContent = 'Delete idea';
+  $('#fMeta').textContent = idea ? `Added ${new Date(idea.created).toLocaleDateString()}${idea.source ? ' from ' + idea.source : ''}. Last edited ${new Date(idea.updated).toLocaleString()}.` : '';
+  try { dlg.showModal(); } catch (e) { dlg.setAttribute('open', ''); }
+  $('#fTitle').focus();
+}
+$('#newIdea').addEventListener('click', () => openEditor(null));
+$('#addAttr').addEventListener('click', () => { $('#attrRows').insertAdjacentHTML('beforeend', attrRow()); $('#attrRows .attr-row:last-child input').focus(); });
+$('#attrRows').addEventListener('click', e => { if (e.target.closest('[data-rm]')) e.target.closest('.attr-row').remove(); });
+$('#fCancel').addEventListener('click', () => dlg.close());
+$('#editForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const title = $('#fTitle').value.trim();
+  if (!title) { $('#fTitle').focus(); return; }
+  const attrs = {};
+  $$('#attrRows .attr-row').forEach(r => { const [k, v] = $$('input', r).map(x => x.value.trim()); if (k && v) attrs[k] = v; });
+  const data = { title, description: $('#fDesc').value.trim(), tags: uniq(splitTags($('#fTags').value)), attrs };
+  if (editing) { Object.assign(editing, data); touch(editing); }
+  else { const now = Date.now(); db.ideas.push({ id: uid(), ...data, source: '', created: now, updated: now }); }
+  saveDb(); dlg.close(); render(); toast(editing ? 'Saved.' : 'Idea added.');
+});
+$('#fDelete').addEventListener('click', e => {
+  if (!delArmed) { delArmed = true; e.target.textContent = 'Select again to delete'; return; }
+  const idea = editing, idx = db.ideas.indexOf(idea);
+  db.ideas.splice(idx, 1); saveDb(); dlg.close(); render();
+  toast(`Deleted “${idea.title}”.`, () => { db.ideas.splice(idx, 0, idea); saveDb(); render(); });
+});
+
+/* ================= Backup / export ================= */
+function download(name, text, type) {
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Downloading ${name}. If nothing happens, use “Copy backup text”.`);
+  } catch (e) { toast('This page cannot download files here. Use “Copy backup text”.'); }
+}
+const backupText = () => JSON.stringify({ app: 'IdeaTank', version: 1, exported: new Date().toISOString(), ideas: db.ideas }, null, 2);
+const csvCell = v => { v = String(v ?? ''); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+$('#exportJson').addEventListener('click', () => download(`ideatank-backup-${new Date().toISOString().slice(0, 10)}.json`, backupText(), 'application/json'));
+$('#exportCsv').addEventListener('click', () => {
+  const keys = uniq(db.ideas.flatMap(i => Object.keys(i.attrs || {})));
+  const rows = [['Title', 'Description', 'Tags', ...keys, 'Source', 'Added'], ...sorted(filtered()).map(i => [i.title, i.description, i.tags.join(', '), ...keys.map(k => i.attrs?.[k] || ''), i.source || '', new Date(i.created).toISOString().slice(0, 10)])];
+  download(`ideatank-${new Date().toISOString().slice(0, 10)}.csv`, '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
+});
+$('#copyJson').addEventListener('click', async () => {
+  const text = backupText();
+  try { await navigator.clipboard.writeText(text); toast(`Copied ${plural(db.ideas.length, 'idea')}. Paste into a text file to keep it.`); }
+  catch (e) {
+    openImport('paste'); pasteBox.value = text; pasteBox.select();
+    toast('Copy was blocked. The backup text is selected in the paste box. Press Ctrl+C or ⌘C.');
+  }
+});
+let wipeArmed = false;
+$('#wipe').addEventListener('click', e => {
+  if (!wipeArmed) { wipeArmed = true; e.target.textContent = `Select again to delete ${plural(db.ideas.length, 'idea')}`; setTimeout(() => { wipeArmed = false; e.target.textContent = 'Delete all ideas'; }, 5000); return; }
+  const old = db.ideas; db.ideas = []; saveDb(); render(); wipeArmed = false; e.target.textContent = 'Delete all ideas';
+  $('#dataMenu').open = false;
+  toast(`Deleted ${plural(old.length, 'idea')}.`, () => { db.ideas = old; saveDb(); render(); });
+});
+$('#removeSamples').addEventListener('click', () => { db.ideas = db.ideas.filter(i => !i.sample); saveDb(); render(); toast('Examples removed.'); });
+
+/* close menus when clicking elsewhere */
+document.addEventListener('click', e => { $$('details.menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('details.menu[open]').forEach(d => { d.open = false; $('summary', d).focus(); }); });
+
+/* display prefs */
+['size', 'spacing', 'theme'].forEach(name => $$(`input[name="${name}"]`).forEach(r => r.addEventListener('change', () => { prefs[name] = r.value; savePrefs(); applyDisplay(); })));
+
+/* ================= Toasts ================= */
+function toast(msg, undo) {
+  const t = document.createElement('div'); t.className = 'toast';
+  t.innerHTML = `<span>${esc(msg)}</span>`;
+  if (undo) { const b = document.createElement('button'); b.textContent = 'Undo'; b.onclick = () => { t.remove(); undo(); }; t.appendChild(b); }
+  $('#toasts').appendChild(t);
+  setTimeout(() => t.remove(), undo ? 8000 : 4000);
+  while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
+}
+
+/* ================= Boot ================= */
+const SAMPLES = [
+  { title: 'Neighborhood tool library', description: 'Members borrow drills, ladders and pressure washers instead of buying them. Run it from a shipping container at the community garden.', tags: ['community', 'sharing'], attrs: { Effort: 'Medium', Cost: 'Low' } },
+  { title: 'Receipt-free warranty tracker', description: 'Photograph a product’s serial plate once. The app finds the warranty terms and reminds you a month before coverage ends.', tags: ['app', 'consumer'], attrs: { Effort: 'High' } },
+  { title: 'Quiet-hours café map', description: 'A shared map of cafés with the times they are calm enough for phone calls, rated by people who work remotely.', tags: ['app', 'remote-work'], attrs: {} },
+  { title: 'Seed-swap vending machine', description: 'Drop in a labeled envelope of seeds from your garden, take one out. Place it at the library entrance.', tags: ['community', 'gardening'], attrs: { Effort: 'High', Cost: 'Medium' } },
+  { title: 'Meeting cost ticker', description: 'A calendar add-on that shows the running cost of a meeting from the number of attendees and an average hourly rate.', tags: ['workplace', 'app'], attrs: { Effort: 'Low' } },
+  { title: 'Repair café night', description: 'Volunteers fix toasters, lamps and torn jackets once a month. Visitors learn while they wait.', tags: ['community', 'sustainability'], attrs: { Cost: 'Low' } },
+];
+loadPrefs();
+const had = loadDb();
+if (!had) {
+  const now = Date.now();
+  db.ideas = SAMPLES.map((s, i) => ({ id: uid(), ...s, tags: [...s.tags, 'example'], source: '', sample: true, created: now - (SAMPLES.length - i) * 60000, updated: now - (SAMPLES.length - i) * 60000 }));
+  saveDb();
+  openImport('paste');
+}
+applyDisplay();
+$('#sort').value = prefs.sort;
+$('#tagSort').value = prefs.tagSort;
+$('#groupByTag').checked = !!prefs.group;
+$('#showFull').checked = !!prefs.full;
+$('#storageWarn').hidden = storageOK;
+if (window.matchMedia('(max-width: 899px)').matches) $('#tagDetails').open = false;
+render();
+
+// exposed for tests
+window.IdeaTank = { parseText, parseDelimited, analyzeTable, buildFromTable, htmlToStructured, looksTabular };
+})();
+</script>
+</body>
+</html>
